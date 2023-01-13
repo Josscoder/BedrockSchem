@@ -1,6 +1,5 @@
 package me.josscoder.bedrockschem;
 
-import cn.nukkit.block.Block;
 import cn.nukkit.level.Level;
 import cn.nukkit.math.Vector3;
 import cn.nukkit.utils.BinaryStream;
@@ -38,8 +37,6 @@ public class WriterBatch {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
                     int blockId = level.getBlockIdAt(x, y, z);
-                    if (blockId == Block.AIR) continue;
-
                     int blockData = level.getBlockDataAt(x, y, z);
 
                     blocksStream.putInt(blockId);
@@ -80,6 +77,8 @@ public class WriterBatch {
             FileOutputStream fileOutputStream = new FileOutputStream(file);
             byte[] compressedData = new byte[]{};
 
+            System.out.println("compressed data antes " + compressedData.length);
+
             switch (compressorType) {
                 case ZSTD:
                     compressedData = Zstd.compress(getStream(), 7);
@@ -93,6 +92,8 @@ public class WriterBatch {
             }
             fileOutputStream.write(compressedData);
             fileOutputStream.close();
+
+            System.out.println("compressed data despues " + compressedData.length);
         } catch (Exception e) {
             throw new StreamBatchException(getClass().getSimpleName(), e.getMessage());
         }

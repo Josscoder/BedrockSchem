@@ -36,12 +36,13 @@ public class ReaderBatch {
     public static ReaderBatch makeFromFile(File file, CompressorType compressorType) throws StreamBatchException {
         try {
             FileInputStream fileInputStream = new FileInputStream(file);
-
             byte[] compressed = new byte[fileInputStream.available()];
             fileInputStream.read(compressed);
             fileInputStream.close();
 
             byte[] decompressed = new byte[]{};
+
+            System.out.println("decompressed antes " + decompressed.length);
 
             switch (compressorType) {
                 case ZSTD:
@@ -54,6 +55,9 @@ public class ReaderBatch {
                     decompressed = Snappy.uncompress(compressed);
                     break;
             }
+
+            System.out.println("decompressed despues " + decompressed.length);
+
             return new ReaderBatch(decompressed);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -72,19 +76,13 @@ public class ReaderBatch {
         try {
             for (int i = 0; i < countBlocks; i++) {
                 Block block = readNextBlock();
+                if (block == null || block.getId() == Block.AIR) continue;
 
                 int x = (int) (position.getX() + stream.getInt());
                 int y = (int) (position.getY() + stream.getInt());
                 int z = (int) (position.getZ() + stream.getInt());
 
-                position.getLevel().setBlockAt(
-                        x,
-                        y,
-                        z,
-                        block.getId(),
-                        block.getDamage()
-                );
-
+                position.getLevel().setBlockAt(x, y, z, block.getId(), block.getDamage());
                 if (callback != null) callback.accept(new Vector3(x, y, z));
             }
         } catch (Exception e) {
