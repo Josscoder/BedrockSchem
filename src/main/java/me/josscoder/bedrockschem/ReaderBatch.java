@@ -4,15 +4,13 @@ import cn.nukkit.block.Block;
 import cn.nukkit.level.Position;
 import cn.nukkit.math.Vector3;
 import cn.nukkit.utils.BinaryStream;
-import cn.nukkit.utils.Zlib;
-import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdInputStream;
 import lombok.Getter;
-import org.xerial.snappy.Snappy;
+import org.xerial.snappy.SnappyInputStream;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.function.Consumer;
+import java.util.zip.InflaterInputStream;
 
 public class ReaderBatch {
 
@@ -30,37 +28,34 @@ public class ReaderBatch {
     }
 
     public static ReaderBatch makeFromFile(File file) throws StreamBatchException {
-        return makeFromFile(file, CompressorType.ZSTD);
+        return makeFromFile(file, CompressionAlgorithm.ZSTD);
     }
 
-    public static ReaderBatch makeFromFile(File file, CompressorType compressorType) throws StreamBatchException {
-        try {
-            FileInputStream fileInputStream = new FileInputStream(file);
-            byte[] compressed = new byte[fileInputStream.available()];
-            fileInputStream.read(compressed);
-            fileInputStream.close();
-
-            byte[] decompressed = new byte[]{};
-
-            System.out.println("decompressed antes " + decompressed.length);
-
-            switch (compressorType) {
+    public static ReaderBatch makeFromFile(File file, CompressionAlgorithm algorithm) throws StreamBatchException {
+        try (FileInputStream fileInputStream = new FileInputStream(file)) {
+            InputStream inputStream;
+            switch (algorithm) {
                 case ZSTD:
-                    decompressed = Zstd.decompress(compressed, compressed.length);
-                    break;
-                case ZLIB:
-                    decompressed = Zlib.inflate(compressed);
+                    inputStream = new ZstdInputStream(fileInputStream);
                     break;
                 case SNAPPY:
-                    decompressed = Snappy.uncompress(compressed);
+                    inputStream = new SnappyInputStream(fileInputStream);
                     break;
+                case ZLIB:
+                    inputStream = new InflaterInputStream(fileInputStream);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported compression algorithm: " + algorithm);
             }
-
-            System.out.println("decompressed despues " + decompressed.length);
-
-            return new ReaderBatch(decompressed);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                baos.write(buffer, 0, read);
+            }
+            return new ReaderBatch(baos.toByteArray());
+        } catch (IOException | StreamBatchException e) {
+            throw new StreamBatchException(ReaderBatch.class.getSimpleName(), e.getMessage());
         }
     }
 
@@ -76,7 +71,7 @@ public class ReaderBatch {
         try {
             for (int i = 0; i < countBlocks; i++) {
                 Block block = readNextBlock();
-                if (block == null || block.getId() == Block.AIR) continue;
+                if (block == null) continue;
 
                 int x = (int) (position.getX() + stream.getInt());
                 int y = (int) (position.getY() + stream.getInt());

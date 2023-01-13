@@ -1,16 +1,15 @@
 package me.josscoder.bedrockschem;
 
+import cn.nukkit.block.Block;
 import cn.nukkit.level.Level;
 import cn.nukkit.math.Vector3;
 import cn.nukkit.utils.BinaryStream;
-import cn.nukkit.utils.Zlib;
-import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdOutputStream;
 import lombok.Getter;
-import org.xerial.snappy.Snappy;
+import org.xerial.snappy.SnappyOutputStream;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.util.zip.DeflaterOutputStream;
 
 public class WriterBatch {
 
@@ -37,10 +36,14 @@ public class WriterBatch {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
                     int blockId = level.getBlockIdAt(x, y, z);
+                    if (blockId == Block.AIR) continue;
+
                     int blockData = level.getBlockDataAt(x, y, z);
 
                     blocksStream.putInt(blockId);
                     blocksStream.putInt(blockData);
+
+                    System.out.println("id " + blockId + " data " + blockData);
 
                     Vector3 newVector = vector3.clone().add(new Vector3(
                             (x - minX),
@@ -66,34 +69,30 @@ public class WriterBatch {
         return stream.getBuffer();
     }
 
-    public void saveAsFile(File file) throws StreamBatchException, IOException {
-        saveAsFile(file, CompressorType.ZSTD);
+    public void saveAsFile(File file) throws IOException, StreamBatchException {
+        saveAsFile(file, CompressionAlgorithm.ZSTD);
     }
 
-    public void saveAsFile(File file, CompressorType compressorType) throws StreamBatchException, IOException {
+    public void saveAsFile(File file, CompressionAlgorithm algorithm) throws IOException, StreamBatchException {
         if (!file.exists()) file.createNewFile();
 
-        try {
-            FileOutputStream fileOutputStream = new FileOutputStream(file);
-            byte[] compressedData = new byte[]{};
-
-            System.out.println("compressed data antes " + compressedData.length);
-
-            switch (compressorType) {
+        try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+            OutputStream outputStream;
+            switch (algorithm) {
                 case ZSTD:
-                    compressedData = Zstd.compress(getStream(), 7);
-                    break;
-                case ZLIB:
-                    compressedData = Zlib.deflate(getStream(), 7);
+                    outputStream = new ZstdOutputStream(fileOutputStream);
                     break;
                 case SNAPPY:
-                    compressedData = Snappy.compress(getStream());
+                    outputStream = new SnappyOutputStream(fileOutputStream);
                     break;
+                case ZLIB:
+                    outputStream = new DeflaterOutputStream(fileOutputStream);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported compression algorithm: " + algorithm);
             }
-            fileOutputStream.write(compressedData);
-            fileOutputStream.close();
-
-            System.out.println("compressed data despues " + compressedData.length);
+            outputStream.write(getStream());
+            outputStream.flush();
         } catch (Exception e) {
             throw new StreamBatchException(getClass().getSimpleName(), e.getMessage());
         }
