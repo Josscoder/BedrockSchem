@@ -4,12 +4,13 @@ import cn.nukkit.block.Block;
 import cn.nukkit.level.Level;
 import cn.nukkit.math.Vector3;
 import cn.nukkit.utils.BinaryStream;
-import com.github.luben.zstd.ZstdOutputStream;
 import lombok.Getter;
-import org.xerial.snappy.SnappyOutputStream;
+import org.apache.commons.compress.compressors.CompressorOutputStream;
+import org.apache.commons.compress.compressors.deflate.DeflateCompressorOutputStream;
+import org.apache.commons.compress.compressors.snappy.SnappyCompressorOutputStream;
+import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 
 import java.io.*;
-import java.util.zip.DeflaterOutputStream;
 
 public class WriterBatch {
 
@@ -43,8 +44,6 @@ public class WriterBatch {
                     blocksStream.putInt(blockId);
                     blocksStream.putInt(blockData);
 
-                    System.out.println("id " + blockId + " data " + blockData);
-
                     Vector3 newVector = vector3.clone().add(new Vector3(
                             (x - minX),
                             (y - minY),
@@ -77,16 +76,16 @@ public class WriterBatch {
         if (!file.exists()) file.createNewFile();
 
         try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-            OutputStream outputStream;
+            CompressorOutputStream outputStream;
             switch (algorithm) {
                 case ZSTD:
-                    outputStream = new ZstdOutputStream(fileOutputStream);
+                    outputStream = new ZstdCompressorOutputStream(fileOutputStream);
                     break;
                 case SNAPPY:
-                    outputStream = new SnappyOutputStream(fileOutputStream);
+                    outputStream = new SnappyCompressorOutputStream(fileOutputStream, 8192);
                     break;
                 case ZLIB:
-                    outputStream = new DeflaterOutputStream(fileOutputStream);
+                    outputStream = new DeflateCompressorOutputStream(fileOutputStream);
                     break;
                 default:
                     throw new IllegalArgumentException("Unsupported compression algorithm: " + algorithm);

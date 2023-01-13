@@ -4,13 +4,14 @@ import cn.nukkit.block.Block;
 import cn.nukkit.level.Position;
 import cn.nukkit.math.Vector3;
 import cn.nukkit.utils.BinaryStream;
-import com.github.luben.zstd.ZstdInputStream;
 import lombok.Getter;
-import org.xerial.snappy.SnappyInputStream;
+import org.apache.commons.compress.compressors.CompressorInputStream;
+import org.apache.commons.compress.compressors.deflate.DeflateCompressorInputStream;
+import org.apache.commons.compress.compressors.snappy.SnappyCompressorInputStream;
+import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream;
 
 import java.io.*;
 import java.util.function.Consumer;
-import java.util.zip.InflaterInputStream;
 
 public class ReaderBatch {
 
@@ -33,27 +34,27 @@ public class ReaderBatch {
 
     public static ReaderBatch makeFromFile(File file, CompressionAlgorithm algorithm) throws StreamBatchException {
         try (FileInputStream fileInputStream = new FileInputStream(file)) {
-            InputStream inputStream;
+            CompressorInputStream compressorInputStream;
             switch (algorithm) {
                 case ZSTD:
-                    inputStream = new ZstdInputStream(fileInputStream);
+                    compressorInputStream = new ZstdCompressorInputStream(fileInputStream);
                     break;
                 case SNAPPY:
-                    inputStream = new SnappyInputStream(fileInputStream);
+                    compressorInputStream = new SnappyCompressorInputStream(fileInputStream);
                     break;
                 case ZLIB:
-                    inputStream = new InflaterInputStream(fileInputStream);
+                    compressorInputStream = new DeflateCompressorInputStream(fileInputStream);
                     break;
                 default:
                     throw new IllegalArgumentException("Unsupported compression algorithm: " + algorithm);
             }
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             byte[] buffer = new byte[4096];
             int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                baos.write(buffer, 0, read);
+            while ((read = compressorInputStream.read(buffer)) != -1) {
+                byteArrayOutputStream.write(buffer, 0, read);
             }
-            return new ReaderBatch(baos.toByteArray());
+            return new ReaderBatch(byteArrayOutputStream.toByteArray());
         } catch (IOException | StreamBatchException e) {
             throw new StreamBatchException(ReaderBatch.class.getSimpleName(), e.getMessage());
         }
