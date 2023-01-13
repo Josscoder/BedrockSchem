@@ -54,6 +54,7 @@ public class ReaderBatch {
             while ((read = compressorInputStream.read(buffer)) != -1) {
                 byteArrayOutputStream.write(buffer, 0, read);
             }
+            compressorInputStream.close();
             return new ReaderBatch(byteArrayOutputStream.toByteArray());
         } catch (IOException | StreamBatchException e) {
             throw new StreamBatchException(ReaderBatch.class.getSimpleName(), e.getMessage());

@@ -76,22 +76,23 @@ public class WriterBatch {
         if (!file.exists()) file.createNewFile();
 
         try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-            CompressorOutputStream outputStream;
+            CompressorOutputStream compressorOutputStream;
             switch (algorithm) {
                 case ZSTD:
-                    outputStream = new ZstdCompressorOutputStream(fileOutputStream);
+                    compressorOutputStream = new ZstdCompressorOutputStream(fileOutputStream);
                     break;
                 case SNAPPY:
-                    outputStream = new SnappyCompressorOutputStream(fileOutputStream, 8192);
+                    compressorOutputStream = new SnappyCompressorOutputStream(fileOutputStream, 8192);
                     break;
                 case ZLIB:
-                    outputStream = new DeflateCompressorOutputStream(fileOutputStream);
+                    compressorOutputStream = new DeflateCompressorOutputStream(fileOutputStream);
                     break;
                 default:
                     throw new IllegalArgumentException("Unsupported compression algorithm: " + algorithm);
             }
-            outputStream.write(getStream());
-            outputStream.flush();
+            compressorOutputStream.write(getStream());
+            compressorOutputStream.flush();
+            compressorOutputStream.close();
         } catch (Exception e) {
             throw new StreamBatchException(getClass().getSimpleName(), e.getMessage());
         }
