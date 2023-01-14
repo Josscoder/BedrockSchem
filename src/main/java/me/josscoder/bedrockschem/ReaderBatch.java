@@ -2,7 +2,7 @@ package me.josscoder.bedrockschem;
 
 import cn.nukkit.block.Block;
 import cn.nukkit.level.Position;
-import cn.nukkit.math.Vector3;
+import cn.nukkit.math.AxisAlignedBB;
 import cn.nukkit.utils.BinaryStream;
 import lombok.Getter;
 import org.apache.commons.compress.compressors.CompressorInputStream;
@@ -10,8 +10,10 @@ import org.apache.commons.compress.compressors.deflate.DeflateCompressorInputStr
 import org.apache.commons.compress.compressors.snappy.SnappyCompressorInputStream;
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream;
 
-import java.io.*;
-import java.util.function.Consumer;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 
 public class ReaderBatch {
 
@@ -69,23 +71,28 @@ public class ReaderBatch {
         buildAt(position, null);
     }
 
-    public void buildAt(Position position, Consumer<Vector3> callback) throws StreamBatchException {
+    public void buildAt(Position position, AxisAlignedBB.BBConsumer action) throws StreamBatchException {
         try {
             for (int i = 0; i < countBlocks; i++) {
                 Block block = readNextBlock();
                 if (block == null) continue;
 
+                int x = stream.getInt();
+                int y = stream.getInt();
+                int z = stream.getInt();
 
-                Vector3 vector3 = position.add(stream.getInt(), stream.getInt(), stream.getInt());
+                int floorX = position.getFloorX();
+                int floorY = position.getFloorY();
+                int floorZ = position.getFloorZ();
 
-                position.getLevel().setBlockAt((int) vector3.x,
-                        (int) vector3.y,
-                        (int) vector3.z,
+                position.getLevel().setBlockAt((floorX + x),
+                        (floorY + y),
+                        (floorZ + z),
                         block.getId(),
                         block.getDamage()
                 );
 
-                if (callback != null) callback.accept(vector3);
+                if (action != null) action.accept((floorX + x), (floorY + y), (floorZ + z));
             }
         } catch (Exception e) {
             throw new StreamBatchException(getClass().getSimpleName(), e.getMessage());
