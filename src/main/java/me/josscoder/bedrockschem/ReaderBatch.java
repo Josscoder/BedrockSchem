@@ -78,9 +78,9 @@ public class ReaderBatch {
 
                 Vector3 vector3 = position.add(stream.getInt(), stream.getInt(), stream.getInt());
 
-                position.getLevel().setBlockAt(vector3.x,
-                        vector3.y,
-                        vector3.z,
+                position.getLevel().setBlockAt((int) vector3.x,
+                        (int) vector3.y,
+                        (int) vector3.z,
                         block.getId(),
                         block.getDamage()
                 );
