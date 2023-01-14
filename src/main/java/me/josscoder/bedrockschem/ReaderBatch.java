@@ -75,12 +75,17 @@ public class ReaderBatch {
                 Block block = readNextBlock();
                 if (block == null) continue;
 
-                int x = (int) (position.getX() + stream.getInt());
-                int y = (int) (position.getY() + stream.getInt());
-                int z = (int) (position.getZ() + stream.getInt());
 
-                position.getLevel().setBlockAt(x, y, z, block.getId(), block.getDamage());
-                if (callback != null) callback.accept(new Vector3(x, y, z));
+                Vector3 vector3 = position.add(stream.getInt(), stream.getInt(), stream.getInt());
+
+                position.getLevel().setBlockAt(vector3.x,
+                        vector3.y,
+                        vector3.z,
+                        block.getId(),
+                        block.getDamage()
+                );
+
+                if (callback != null) callback.accept(vector3);
             }
         } catch (Exception e) {
             throw new StreamBatchException(getClass().getSimpleName(), e.getMessage());

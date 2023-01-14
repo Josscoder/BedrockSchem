@@ -2,7 +2,7 @@ package me.josscoder.bedrockschem;
 
 import cn.nukkit.block.Block;
 import cn.nukkit.level.Level;
-import cn.nukkit.math.Vector3;
+import cn.nukkit.math.AxisAlignedBB;
 import cn.nukkit.utils.BinaryStream;
 import lombok.Getter;
 import org.apache.commons.compress.compressors.CompressorOutputStream;
@@ -10,7 +10,9 @@ import org.apache.commons.compress.compressors.deflate.DeflateCompressorOutputSt
 import org.apache.commons.compress.compressors.snappy.SnappyCompressorOutputStream;
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class WriterBatch {
 
@@ -18,41 +20,39 @@ public class WriterBatch {
     private int countBlocks = 0;
     private final BinaryStream blocksStream = new BinaryStream();
 
-    public void addBlocksFrom3DGrid(Vector3 cornerOne, Vector3 cornerTwo, Level level) {
-        int minX = (int) Math.min(cornerOne.x, cornerTwo.x);
-        int minY = (int) Math.min(cornerOne.y, cornerTwo.y);
-        int minZ = (int) Math.min(cornerOne.z, cornerTwo.z);
+    public void addBlocksFrom3DPolygon(AxisAlignedBB boundingBox, Level level) {
+        int minX = (int) boundingBox.getMinX(),
+                minY = (int) boundingBox.getMinY(),
+                minZ = (int) boundingBox.getMinZ();
 
-        int maxX = (int) Math.max(cornerOne.x, cornerTwo.x);
-        int maxY = (int) Math.max(cornerOne.y, cornerTwo.y);
-        int maxZ = (int) Math.max(cornerOne.z, cornerTwo.z);
+        int maxX = (int) boundingBox.getMaxX(),
+                maxY = (int) boundingBox.getMaxY(),
+                maxZ = (int) boundingBox.getMaxZ();
 
-        int iX = (maxX - minX + 1);
-        int iY = (maxY - minY + 1);
-        int iZ = (maxZ - minZ + 1);
+        int sizeX = maxX - minX + 1;
+        int sizeY = maxY - minY + 1;
+        int sizeZ = maxZ - minZ + 1;
+        Block[][][] grid = new Block[sizeX][sizeY][sizeZ];
 
-        Vector3 vector3 = new Vector3(iX, iY, iZ);
+        boundingBox.forEach((x, y, z) -> {
+            int blockId = level.getBlockIdAt(x, y, z);
+            if (blockId == Block.AIR) return;
+            int blockData = level.getBlockDataAt(x, y, z);
 
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-                for (int z = minZ; z <= maxZ; z++) {
-                    int blockId = level.getBlockIdAt(x, y, z);
-                    if (blockId == Block.AIR) continue;
+            grid[x-minX][y-minY][z-minZ] = Block.get(blockId, blockData);
+        });
 
-                    int blockData = level.getBlockDataAt(x, y, z);
+        for (int x = 0; x < sizeX; x++) {
+            for (int y = 0; y < sizeY; y++) {
+                for (int z = 0; z < sizeZ; z++) {
+                    Block blockAt = grid[x][y][z];
 
-                    blocksStream.putInt(blockId);
-                    blocksStream.putInt(blockData);
+                    blocksStream.putInt(blockAt.getId());
+                    blocksStream.putInt(blockAt.getDamage());
 
-                    Vector3 newVector = vector3.clone().add(new Vector3(
-                            (x - minX),
-                            (y - minY),
-                            (z - minZ)
-                    ));
-
-                    blocksStream.putInt(newVector.getFloorX());
-                    blocksStream.putInt(newVector.getFloorY());
-                    blocksStream.putInt(newVector.getFloorZ());
+                    blocksStream.putInt(x);
+                    blocksStream.putInt(y);
+                    blocksStream.putInt(z);
 
                     countBlocks++;
                 }
