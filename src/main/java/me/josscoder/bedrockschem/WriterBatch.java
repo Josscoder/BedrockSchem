@@ -32,39 +32,29 @@ public class WriterBatch {
         int sizeX = maxX - minX + 1;
         int sizeY = maxY - minY + 1;
         int sizeZ = maxZ - minZ + 1;
-        Block[][][] grid = new Block[sizeX][sizeY][sizeZ];
+
+        System.out.println("size x " + sizeX);
+        System.out.println("size y " + sizeY);
+        System.out.println("size z " + sizeZ);
 
         boundingBox.forEach((x, y, z) -> {
             int blockId = level.getBlockIdAt(x, y, z);
             if (blockId == Block.AIR) return;
             int blockData = level.getBlockDataAt(x, y, z);
 
-            grid[x-minX][y-minY][z-minZ] = Block.get(blockId, blockData);
+            blocksStream.putInt(blockId);
+            blocksStream.putInt(blockData);
+
+            blocksStream.putInt(x-minX);
+            blocksStream.putInt(y-minY);
+            blocksStream.putInt(z-minZ);
+
+            System.out.println("x " + (x-minX));
+            System.out.println("y " + (y-minY));
+            System.out.println("z " + (z-minZ));
+
+            countBlocks++;
         });
-
-        for (int x = 0; x <= sizeX; x++) {
-            for (int y = 0; y <= sizeY; y++) {
-                for (int z = 0; z <= sizeZ; z++) {
-                    Block block;
-
-                    try {
-                        block = grid[x][y][z];
-                    } catch (NullPointerException ignore) {
-                        block = null;
-                    }
-                    if (block == null) return;
-
-                    blocksStream.putInt(block.getId());
-                    blocksStream.putInt(block.getDamage());
-
-                    blocksStream.putInt(x);
-                    blocksStream.putInt(y);
-                    blocksStream.putInt(z);
-
-                    countBlocks++;
-                }
-            }
-        }
     }
 
     public byte[] getStream() {
