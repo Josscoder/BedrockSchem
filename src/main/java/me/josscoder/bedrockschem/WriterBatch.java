@@ -25,18 +25,6 @@ public class WriterBatch {
                 minY = (int) boundingBox.getMinY(),
                 minZ = (int) boundingBox.getMinZ();
 
-        int maxX = (int) boundingBox.getMaxX(),
-                maxY = (int) boundingBox.getMaxY(),
-                maxZ = (int) boundingBox.getMaxZ();
-
-        int sizeX = maxX - minX + 1;
-        int sizeY = maxY - minY + 1;
-        int sizeZ = maxZ - minZ + 1;
-
-        System.out.println("size x " + sizeX);
-        System.out.println("size y " + sizeY);
-        System.out.println("size z " + sizeZ);
-
         boundingBox.forEach((x, y, z) -> {
             int blockId = level.getBlockIdAt(x, y, z);
             if (blockId == Block.AIR) return;
@@ -45,13 +33,9 @@ public class WriterBatch {
             blocksStream.putInt(blockId);
             blocksStream.putInt(blockData);
 
-            blocksStream.putInt(x-minX);
-            blocksStream.putInt(y-minY);
-            blocksStream.putInt(z-minZ);
-
-            System.out.println("x " + (x-minX));
-            System.out.println("y " + (y-minY));
-            System.out.println("z " + (z-minZ));
+            blocksStream.putInt(x - minX);
+            blocksStream.putInt(y - minY);
+            blocksStream.putInt(z - minZ);
 
             countBlocks++;
         });
