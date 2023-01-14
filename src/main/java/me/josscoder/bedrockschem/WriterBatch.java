@@ -42,13 +42,20 @@ public class WriterBatch {
             grid[x-minX][y-minY][z-minZ] = Block.get(blockId, blockData);
         });
 
-        for (int x = 0; x < sizeX; x++) {
-            for (int y = 0; y < sizeY; y++) {
-                for (int z = 0; z < sizeZ; z++) {
-                    Block blockAt = grid[x][y][z];
+        for (int x = 0; x <= sizeX; x++) {
+            for (int y = 0; y <= sizeY; y++) {
+                for (int z = 0; z <= sizeZ; z++) {
+                    Block block;
 
-                    blocksStream.putInt(blockAt.getId());
-                    blocksStream.putInt(blockAt.getDamage());
+                    try {
+                        block = grid[x][y][z];
+                    } catch (NullPointerException ignore) {
+                        block = null;
+                    }
+                    if (block == null) return;
+
+                    blocksStream.putInt(block.getId());
+                    blocksStream.putInt(block.getDamage());
 
                     blocksStream.putInt(x);
                     blocksStream.putInt(y);
